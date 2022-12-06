@@ -19,7 +19,7 @@ for direction in directions.split('\n'):
     amount, origin, destination = map(int, re.match('move (\d*) from (\d*) to (\d*)', direction).groups())
 
     for _ in range(amount):
-        stacks[destination-1].append(stacks[origin-1][-1])
-        stacks[origin-1].pop()
+        crate = stacks[origin-1].pop()
+        stacks[destination-1].append(crate)
 
 print(''.join([stack[-1] for stack in stacks]))
