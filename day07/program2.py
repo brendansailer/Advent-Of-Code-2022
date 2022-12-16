@@ -1,23 +1,57 @@
 #!/usr/bin/env python3
 
-import collections
 import sys
+import collections
 
-# Functions
+def read_input():
+    fs = collections.defaultdict(list)
+    cwd = '/'
 
-def find_first_marker(datastream, window_size):
-    window = collections.deque(maxlen=window_size)
-    for position, packet in enumerate(datastream, 1):
-        window.append(packet)
-        if len(window) == len(set(window)) == window_size:
-            return position
+    for line in sys.stdin:
+        values = line.strip().split()
 
-# Main Execution
+        if values[0] == '$' and values[1] == 'cd':
+            if values[2] == '..': # If we're going up a dir, chop off the last part of the path
+                cwd = '/'.join(cwd.split('/')[:-1])
+            else: # Otherwise add it on
+                if values[2] == '/' and cwd == '/':
+                    pass
+                elif cwd == '/': # Don't double up slashes for the top-level
+                    cwd += values[2]
+                else:
+                    cwd += '/' + values[2]
+        elif values[0] == '$' and values[1] == 'ls':
+            pass
+        elif values[0] == 'dir':
+            dir_name = values[1]
+            fs[cwd].append(('D', dir_name, 0))
+        else:
+            size, filename = int(values[0]), values[1]
+            fs[cwd].append(('F', filename, size))
+
+    return fs
+
+def count_filesystem_r(files, cwd, sizes):
+    for ftype, fname, fsize in files[cwd]:
+        if ftype == 'F':
+            sizes[cwd] += fsize
+        else:
+            if cwd == '/':
+                path = cwd + fname
+            else:
+                path = cwd + '/' + fname
+            count_filesystem_r(files, path, sizes)
+            sizes[cwd] += sizes[path]
+
+    return sizes
 
 def main():
-    for datastream in map(str.strip, sys.stdin):
-        print(f'Day 06-A: {find_first_marker(datastream, 4)}')
-        print(f'Day 06-B: {find_first_marker(datastream, 14)}')
+    files = read_input()
+    sizes = collections.defaultdict(int)
+    count_filesystem_r(files, '/', sizes)
+    free_space = 70000000 - sizes['/']
+    amount_to_remove = 30000000 - free_space
+    print(f'Result: {min([size for size in sizes.values() if size >= amount_to_remove])}')
 
 if __name__ == '__main__':
     main()

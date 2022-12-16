@@ -3,6 +3,8 @@
 import sys
 import collections
 
+# In hindsight, using something like os.path.abspath and os.path.join would have been better to manage the paths
+
 def read_input():
     fs = collections.defaultdict(list)
     cwd = '/'
@@ -13,75 +15,43 @@ def read_input():
         if values[0] == '$' and values[1] == 'cd':
             if values[2] == '..': # If we're going up a dir, chop off the last part of the path
                 cwd = '/'.join(cwd.split('/')[:-1])
-            elif values[2] == '/' and cwd == '/': 
-                pass
             else: # Otherwise add it on
-                cwd += '/' + values[2]
+                if values[2] == '/' and cwd == '/':
+                    pass
+                elif cwd == '/': # Don't double up slashes for the top-level
+                    cwd += values[2]
+                else:
+                    cwd += '/' + values[2]
         elif values[0] == '$' and values[1] == 'ls':
             pass
         elif values[0] == 'dir':
             dir_name = values[1]
-            fs[cwd].append(('dir', dir_name, 0))
+            fs[cwd].append(('D', dir_name, 0))
         else:
             size, filename = int(values[0]), values[1]
-            fs[cwd].append(('file', filename, size))
+            fs[cwd].append(('F', filename, size))
 
     return fs
 
-def calculate_size(files, cwd, result):
-    print(cwd)
-    total = 0
-    for type, name, size in files[cwd]:
-        #print(type, name, size)
-        if type == 'file':
-            total += size
+def count_filesystem_r(files, cwd, sizes):
+    for ftype, fname, fsize in files[cwd]:
+        if ftype == 'F':
+            sizes[cwd] += fsize
         else:
-            for entry in files[cwd]:
-                size += calculate_size(files, '/' + entry[1], result)
+            if cwd == '/':
+                path = cwd + fname
+            else:
+                path = cwd + '/' + fname
+            count_filesystem_r(files, path, sizes)
+            sizes[cwd] += sizes[path]
 
-    if total != 0:
-        result.append(total)
-    return total
+    return sizes
 
 def main():
     files = read_input()
-    print(files)
-    sizes = []
-    calculate_size(files, '', sizes)
-    print("Sizes: ", sizes)
-    #print(f'Result: {sum([size for size in sizes if size <= 100000])}')
+    sizes = collections.defaultdict(int)
+    count_filesystem_r(files, '/', sizes)
+    print(f'Result: {sum([size for size in sizes.values() if size <= 100000])}')
 
 if __name__ == '__main__':
     main()
-
-'''
-$ cd /
-$ ls
-dir bfbjzfd
-dir mbc
-dir psqmv
-dir qqpgw
-59022 rrqzqwl.frp
-dir sscj
-dir vpfdwq
-dir zzp
-$ cd bfbjzfd
-$ ls
-125000 bmzjjgzc.dcr
-dir brmgzjp
-165351 hgm
-dir rhrqttg
-dir zfdc
-$ cd brmgzjp
-$ ls
-298676 zzp.wrm
-$ cd ..
-$ cd rhrqttg
-$ ls
-dir hmz
-dir hpcrbfq
-$ cd hmz
-$ ls
-297949 lqcg
-$ cd ..
-'''
